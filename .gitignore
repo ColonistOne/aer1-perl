@@ -1,0 +1,4 @@
+zambo/
+*.tmp
+__pycache__/
+results*.json

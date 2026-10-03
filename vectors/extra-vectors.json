@@ -1,0 +1,286 @@
+{
+ "spec": "draft-zambo-aer1-09",
+ "reference": "aer-1/conformance.py @ 2307a7fd",
+ "vectors": [
+  {
+   "kind": "receipt",
+   "name": "x-base64-unpadded",
+   "desc": "canonical_bytes with its padding stripped; hash still matches the bytes",
+   "isolates": "strict base64 padding",
+   "receipt": {
+    "id": "b6c63ac5-f324-4fa7-ad58-c4bf83faa86a",
+    "receipt_schema_version": "0.3",
+    "created_at": "2026-09-27T09:00:00.000Z",
+    "tool": {
+     "name": "live_price",
+     "version": "4.0.0",
+     "scope": "public"
+    },
+    "provenance_class": "EXECUTED BY ZAMBO",
+    "canonical_bytes": "eyJpbnB1dHMiOnt9LCJvdXRwdXRzIjp7IngiOjEyM30sInRvb2wiOiJ0In0",
+    "output_hash": "sha256:65c8ba373c6115ce04b70e2aaa544f4374d0d5f8e73116a40d9856de5053dc50",
+    "verification_status": "verified"
+   },
+   "expected_verdict": "invalid"
+  },
+  {
+   "kind": "receipt",
+   "name": "x-feb29-non-leap",
+   "desc": "29 February in a non-leap year",
+   "isolates": "Gregorian leap rule",
+   "receipt": {
+    "id": "b6c63ac5-f324-4fa7-ad58-c4bf83faa86a",
+    "receipt_schema_version": "0.3",
+    "created_at": "2023-02-29T00:00:00Z",
+    "tool": {
+     "name": "live_price",
+     "version": "4.0.0",
+     "scope": "public"
+    },
+    "provenance_class": "EXECUTED BY ZAMBO",
+    "canonical_bytes": "eyJpbnB1dHMiOnt9LCJvdXRwdXRzIjp7IngiOjEyM30sInRvb2wiOiJ0In0=",
+    "output_hash": "sha256:65c8ba373c6115ce04b70e2aaa544f4374d0d5f8e73116a40d9856de5053dc50",
+    "verification_status": "verified"
+   },
+   "expected_verdict": "invalid"
+  },
+  {
+   "kind": "receipt",
+   "name": "x-feb29-leap",
+   "desc": "29 February in a leap year (control)",
+   "isolates": "Gregorian leap rule (control)",
+   "receipt": {
+    "id": "b6c63ac5-f324-4fa7-ad58-c4bf83faa86a",
+    "receipt_schema_version": "0.3",
+    "created_at": "2024-02-29T00:00:00Z",
+    "tool": {
+     "name": "live_price",
+     "version": "4.0.0",
+     "scope": "public"
+    },
+    "provenance_class": "EXECUTED BY ZAMBO",
+    "canonical_bytes": "eyJpbnB1dHMiOnt9LCJvdXRwdXRzIjp7IngiOjEyM30sInRvb2wiOiJ0In0=",
+    "output_hash": "sha256:65c8ba373c6115ce04b70e2aaa544f4374d0d5f8e73116a40d9856de5053dc50",
+    "verification_status": "verified"
+   },
+   "expected_verdict": "valid"
+  },
+  {
+   "kind": "receipt",
+   "name": "x-feb29-1900",
+   "desc": "1900 is not a leap year (century rule)",
+   "isolates": "century leap rule",
+   "receipt": {
+    "id": "b6c63ac5-f324-4fa7-ad58-c4bf83faa86a",
+    "receipt_schema_version": "0.3",
+    "created_at": "1900-02-29T00:00:00Z",
+    "tool": {
+     "name": "live_price",
+     "version": "4.0.0",
+     "scope": "public"
+    },
+    "provenance_class": "EXECUTED BY ZAMBO",
+    "canonical_bytes": "eyJpbnB1dHMiOnt9LCJvdXRwdXRzIjp7IngiOjEyM30sInRvb2wiOiJ0In0=",
+    "output_hash": "sha256:65c8ba373c6115ce04b70e2aaa544f4374d0d5f8e73116a40d9856de5053dc50",
+    "verification_status": "verified"
+   },
+   "expected_verdict": "invalid"
+  },
+  {
+   "kind": "receipt",
+   "name": "x-fraction-one-digit",
+   "desc": "created_at with a one-digit fraction; RFC 3339 allows 1*DIGIT (reference: valid on Python 3.11+, rejected on 3.10 and earlier)",
+   "isolates": "RFC 3339 fractional seconds, any digit count",
+   "receipt": {
+    "id": "b6c63ac5-f324-4fa7-ad58-c4bf83faa86a",
+    "receipt_schema_version": "0.3",
+    "created_at": "2026-09-23T23:45:20.7Z",
+    "tool": {
+     "name": "live_price",
+     "version": "4.0.0",
+     "scope": "public"
+    },
+    "provenance_class": "EXECUTED BY ZAMBO",
+    "canonical_bytes": "eyJpbnB1dHMiOnt9LCJvdXRwdXRzIjp7IngiOjEyM30sInRvb2wiOiJ0In0=",
+    "output_hash": "sha256:65c8ba373c6115ce04b70e2aaa544f4374d0d5f8e73116a40d9856de5053dc50",
+    "verification_status": "verified"
+   },
+   "expected_verdict": "valid"
+  },
+  {
+   "kind": "receipt",
+   "name": "x-tool-empty-name",
+   "desc": "tool.name is an empty string",
+   "isolates": "non-empty tool strings",
+   "receipt": {
+    "id": "b6c63ac5-f324-4fa7-ad58-c4bf83faa86a",
+    "receipt_schema_version": "0.3",
+    "created_at": "2026-09-27T09:00:00.000Z",
+    "tool": {
+     "name": "",
+     "version": "4.0.0",
+     "scope": "public"
+    },
+    "provenance_class": "EXECUTED BY ZAMBO",
+    "canonical_bytes": "eyJpbnB1dHMiOnt9LCJvdXRwdXRzIjp7IngiOjEyM30sInRvb2wiOiJ0In0=",
+    "output_hash": "sha256:65c8ba373c6115ce04b70e2aaa544f4374d0d5f8e73116a40d9856de5053dc50",
+    "verification_status": "verified"
+   },
+   "expected_verdict": "invalid"
+  },
+  {
+   "kind": "chain",
+   "name": "x-genesis-single",
+   "desc": "One closed entry whose prev_digest is not the zero digest: only the genesis rule can reject it",
+   "isolates": "genesis rule, isolated",
+   "timeline": [
+    {
+     "id": "r-job-x1-0",
+     "seq": 1,
+     "job_id": "job-x1",
+     "tool": "price_lookup",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiAiam9iLXgxIiwgImVudHJ5IjogMH0=",
+     "prev_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+     "close": true
+    }
+   ],
+   "expected_verdict": "invalid"
+  },
+  {
+   "kind": "chain",
+   "name": "x-encoding-reference",
+   "desc": "Links computed with the reference encoding: lowercase \\u hex, \\n short escape, U+007F escaped",
+   "isolates": "Section 7.1 string escaping",
+   "timeline": [
+    {
+     "id": "r-job-\u20ac\nline-0",
+     "seq": 1,
+     "job_id": "job-\u20ac\nline",
+     "tool": "t\u00e9st\u007ftool",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiAiam9iLVx1MjBhY1xubGluZSIsICJlbnRyeSI6IDB9",
+     "prev_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "id": "r-job-\u20ac\nline-1",
+     "seq": 2,
+     "job_id": "job-\u20ac\nline",
+     "tool": "t\u00e9st\u007ftool",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiAiam9iLVx1MjBhY1xubGluZSIsICJlbnRyeSI6IDF9",
+     "prev_digest": "8619a38b94f8e05d8de9b3fc6ad4a4070e219a3389c985e90fae1387b98a5a6e"
+    },
+    {
+     "id": "r-job-\u20ac\nline-2",
+     "seq": 3,
+     "job_id": "job-\u20ac\nline",
+     "tool": "t\u00e9st\u007ftool",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiAiam9iLVx1MjBhY1xubGluZSIsICJlbnRyeSI6IDJ9",
+     "prev_digest": "3801fa55838c96c489064bc12633f9b5fae11b9f3ae239a3c362554800a0a436",
+     "close": true
+    }
+   ],
+   "expected_verdict": "valid"
+  },
+  {
+   "kind": "chain",
+   "name": "x-encoding-draft-literal",
+   "desc": "Same chain, links computed by the draft text read literally (U+007F left unescaped as ASCII)",
+   "isolates": "draft text vs reference on U+007F",
+   "timeline": [
+    {
+     "id": "r-job-\u20ac\nline-0",
+     "seq": 1,
+     "job_id": "job-\u20ac\nline",
+     "tool": "t\u00e9st\u007ftool",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiAiam9iLVx1MjBhY1xubGluZSIsICJlbnRyeSI6IDB9",
+     "prev_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "id": "r-job-\u20ac\nline-1",
+     "seq": 2,
+     "job_id": "job-\u20ac\nline",
+     "tool": "t\u00e9st\u007ftool",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiAiam9iLVx1MjBhY1xubGluZSIsICJlbnRyeSI6IDF9",
+     "prev_digest": "f86a8186a7f7be1b78a10f29ee10ec8c93ffa73cf987c119e9274a2997e08249"
+    },
+    {
+     "id": "r-job-\u20ac\nline-2",
+     "seq": 3,
+     "job_id": "job-\u20ac\nline",
+     "tool": "t\u00e9st\u007ftool",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiAiam9iLVx1MjBhY1xubGluZSIsICJlbnRyeSI6IDJ9",
+     "prev_digest": "ed8eeee3af5e5d1df2962634c3ed75caf6f610530898667c15a9025965bad6a5",
+     "close": true
+    }
+   ],
+   "expected_verdict": "invalid"
+  },
+  {
+   "kind": "commitment",
+   "name": "x-entry-count-float",
+   "desc": "entry_count written as a float with an integer value",
+   "isolates": "entry_count must be an integer, not 5.0",
+   "timeline": [
+    {
+     "id": "r-job-7a1f-0",
+     "seq": 1,
+     "job_id": "job-7a1f",
+     "tool": "price_lookup",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiJqb2ItN2ExZiIsImVudHJ5IjowLCJ0YWciOiJyIn0=",
+     "prev_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+     "id": "r-job-7a1f-1",
+     "seq": 2,
+     "job_id": "job-7a1f",
+     "tool": "price_lookup",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiJqb2ItN2ExZiIsImVudHJ5IjoxLCJ0YWciOiJyIn0=",
+     "prev_digest": "380d45c6575bdb648e5723adee5a049ff212574d4c6d5dd8ad4cabcc54b6aa56"
+    },
+    {
+     "id": "r-job-7a1f-2",
+     "seq": 3,
+     "job_id": "job-7a1f",
+     "tool": "price_lookup",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiJqb2ItN2ExZiIsImVudHJ5IjoyLCJ0YWciOiJyIn0=",
+     "prev_digest": "c225aa2256e7984575f5a664b690f2b06c86abddc528def6164fb1bbb0aa4cba"
+    },
+    {
+     "id": "r-job-7a1f-3",
+     "seq": 4,
+     "job_id": "job-7a1f",
+     "tool": "price_lookup",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiJqb2ItN2ExZiIsImVudHJ5IjozLCJ0YWciOiJyIn0=",
+     "prev_digest": "4c56c96378cea5939ad61d082fff24d075649ca888b0c61308307d14034a204a"
+    },
+    {
+     "id": "r-job-7a1f-4",
+     "seq": 5,
+     "job_id": "job-7a1f",
+     "tool": "price_lookup",
+     "provenance_class": "LOGGED BY AGENT",
+     "canonical_bytes": "eyJqb2IiOiJqb2ItN2ExZiIsImVudHJ5Ijo0LCJ0YWciOiJyIn0=",
+     "prev_digest": "5dd618b1b3b904a92261bb747f8c4511b0882e1454fc41f20a59fa5bd0ded778",
+     "close": true
+    }
+   ],
+   "commitment": {
+    "job_id": "job-7a1f",
+    "final_entry_digest": "79b1e2e26842e7a49f7d0c0606e795c08d84d3877bb95988492601b7451074b0",
+    "entry_count": 5.0,
+    "published_at": "2026-10-01T18:30:00Z"
+   },
+   "expected_verdict": "invalid"
+  }
+ ]
+}

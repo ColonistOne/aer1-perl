@@ -1,0 +1,247 @@
+#!/usr/bin/env perl
+# AER-1 conformance runner for the Perl verifier.
+#
+#   perl bin/aer1-conformance /path/to/zambo/aer-1 [--json results.json]
+#
+# Reads the frozen corpora as data and checks every vector against
+# lib/AER1.pm. Stricter than the reference runner in one place: an invalid
+# receipt passes only if it is rejected FOR THE REASON ITS FILENAME STATES.
+# Fails closed: a missing corpus, an empty fixture set, an unknown
+# expected_verdict or an unmapped invalid filename is a failure, never a skip.
+use strict;
+use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use AER1;
+
+my ($root, $json_out, $extra);
+while (@ARGV) {
+    my $a = shift @ARGV;
+    if    ($a eq '--json')  { $json_out = shift @ARGV }
+    elsif ($a eq '--extra') { $extra = shift @ARGV }
+    else  { $root = $a }
+}
+die "usage: aer1-conformance /path/to/aer-1 [--extra extra-vectors.json] [--json out.json]\n"
+    unless defined $root && -d $root;
+
+my (@problems, @results, %count);
+
+sub load {
+    my ($path) = @_;
+    open my $fh, '<:raw', $path or die "cannot read $path: $!\n";
+    local $/; my $bytes = <$fh>; close $fh;
+    die "$path is not valid UTF-8\n" unless AER1::utf8_valid($bytes);
+    utf8::decode($bytes);
+    return AER1::json_decode($bytes);
+}
+sub glob_json { my ($dir) = @_; return sort grep { -f } glob "$root/$dir/*.json" }
+sub base { my ($p) = @_; $p =~ s{.*/}{}; return $p }
+sub record {
+    my ($kind, $name, $ok, $verdict, @fails) = @_;
+    $count{$kind}{total}++;
+    $count{$kind}{pass}++ if $ok;
+    push @results, { corpus => $kind, vector => $name, pass => $ok ? JSON_TRUE() : JSON_FALSE(),
+                     verdict => $verdict, failures => [@fails] };
+    return $ok;
+}
+sub JSON_TRUE  { \1 } sub JSON_FALSE { \0 }
+
+# --- receipts -------------------------------------------------------------
+my %REASON = (                     # filename -> family the rejection must be in
+    'bad-created-at'              => 'created_at',
+    'bad-id'                      => 'id',
+    'bad-offset-range'            => 'created_at',
+    'bad-provenance'              => 'provenance',
+    'bad-verification-status'     => 'verification_status',
+    'bytes-not-base64'            => 'base64',
+    'hash-bad-format'             => 'hash_format',
+    'hash-mismatch'               => 'hash_mismatch',
+    'id-trailing-newline'         => 'id',
+    'impossible-date'             => 'created_at',
+    'missing-output-hash'         => 'missing:output_hash',
+    'non-utf8-bytes'              => 'utf8',
+    'provenance-trailing-newline' => 'provenance',
+    'tool-not-object'             => 'tool',
+    'uppercase-id'                => 'id',
+);
+sub family {
+    my ($m) = @_;
+    return "missing:$1"           if $m =~ /^missing required member: (\S+)$/;
+    return 'id'                   if $m =~ /^id is not/;
+    return 'created_at'           if $m =~ /^created_at /;
+    return 'provenance'           if $m =~ /^provenance_class /;
+    return 'verification_status'  if $m =~ /^verification_status /;
+    return 'base64'               if $m eq 'canonical_bytes is not valid base64';
+    return 'utf8'                 if $m eq 'canonical_bytes is not valid UTF-8';
+    return 'hash_format'          if $m =~ /^output_hash is not /;
+    return 'hash_mismatch'        if $m =~ /^output_hash does not match/;
+    return 'tool'                 if $m =~ /^tool /;
+    return 'other';
+}
+
+my @valid = glob_json('test-vectors/valid');
+my @invalid = glob_json('test-vectors/invalid');
+my @profile = glob_json('test-vectors/invalid-profile');
+my @anchored = glob_json('test-vectors/anchored');
+push @problems, 'no fixtures in test-vectors/valid (empty glob)' unless @valid;
+push @problems, 'no fixtures in test-vectors/invalid (empty glob)' unless @invalid;
+push @problems, 'no fixtures in test-vectors/invalid-profile (empty glob)' unless @profile;
+push @problems, 'no fixtures in test-vectors/anchored (empty glob)' unless @anchored;
+
+for my $p (@valid) {
+    my @f = AER1::check_receipt(load($p));
+    my $ok = record('valid', base($p), !@f, @f ? 'invalid' : 'valid', @f);
+    printf "[valid]   %s: %s%s\n", base($p), $ok ? 'PASS' : 'FAIL', @f ? " (@{[join '; ', @f]})" : '';
+    push @problems, base($p) . ' should conform but does not' unless $ok;
+}
+for my $p (@invalid) {
+    my $name = base($p); (my $stem = $name) =~ s/\.json$//;
+    my @f = AER1::check_receipt(load($p));
+    my $want = $REASON{$stem};
+    my %fam = map { family($_) => 1 } @f;
+    my $why = !@f ? 'accepted!' : !defined $want ? "no reason mapping for $name (fail closed)"
+            : !$fam{$want} ? "rejected, but not for '$want': $f[0]" : "rejected: $f[0]";
+    my $ok = record('invalid', $name, @f && defined $want && $fam{$want}, @f ? 'invalid' : 'valid', @f);
+    printf "[invalid] %s: %s (%s)\n", $name, $ok ? 'PASS' : 'FAIL', $why;
+    push @problems, "$name: $why" unless $ok;
+}
+for my $p (@profile) {
+    my $r = load($p);
+    my @core = AER1::check_receipt($r);
+    my @prof = AER1::check_reference_profile($r);
+    my $ok = record('invalid-profile', base($p), !@core && @prof, @core ? 'invalid' : 'valid', @core, @prof);
+    printf "[profile-invalid] %s: %s (%s)\n", base($p), $ok ? 'PASS' : 'FAIL',
+        @core ? "unexpected core failure: $core[0]" : @prof ? "core accepted, profile rejected: $prof[0]" : 'profile accepted!';
+    push @problems, base($p) . ' profile boundary not respected' unless $ok;
+}
+for my $p (@anchored) {
+    my $r = load($p);
+    my @core = AER1::check_receipt($r);
+    my @tier = AER1::check_disinterested_tier($r);
+    my $expect = base($p) eq 'anchored-valid.json';
+    my $ok = record('anchored', base($p), !@core && ($expect ? !@tier : !!@tier),
+                    @core || @tier ? 'invalid' : 'valid', @core, @tier);
+    printf "[anchored] %s: %s%s\n", base($p), $ok ? 'PASS' : 'FAIL', @tier ? " (tier: $tier[0])" : '';
+    push @problems, base($p) . ' anchored tier verdict wrong' unless $ok;
+}
+
+# --- Merkle (Section 8.1) and workflow verdicts (Section 8.2) -------------
+sub corpus {
+    my ($file) = @_;
+    my $path = "$root/$file";
+    unless (-f $path) { push @problems, "$file is missing (no silent pass)"; return () }
+    my $c = load($path);
+    my $v = AER1::is_obj($c) ? $c->{vectors} : undef;
+    unless (AER1::is_arr($v) && @$v) { push @problems, "$file contains no vectors (no silent pass)"; return () }
+    return @$v;
+}
+for my $v (corpus('merkle-vectors.json')) {
+    my $name = $v->{name} // '?';
+    my ($ok, $got) = (1, undef);
+    if (exists $v->{receipt_ids}) {
+        $got = AER1::merkle_root(@{ $v->{receipt_ids} });
+        $ok = $got eq $v->{expected_root};
+    } elsif (exists $v->{leaves}) {
+        # Legacy construction: leaves from documented preimages in seq order;
+        # the historical root is required, never the canonical one.
+        my @l = sort { AER1::int_value($a->{seq}) <=> AER1::int_value($b->{seq}) } @{ $v->{leaves} };
+        $got = AER1::merkle_root(map { $_->{preimage} } @l);
+        $ok = $got eq $v->{expected_root} && !(AER1::is_str($v->{must_not_equal}) && $got eq $v->{must_not_equal});
+    }
+    if (AER1::is_str($v->{must_not_equal}) && length $v->{must_not_equal} && exists $v->{receipt_ids}
+        && $v->{expected_root} eq $v->{must_not_equal}) {
+        $ok = 0; push @problems, "merkle vector $name: root must differ from the canonical/legacy counterpart";
+    }
+    my @wf;
+    my $verdict;
+    if (exists $v->{expected_workflow_verdict}) {
+        if (!exists $v->{receipt_ids}) {
+            $ok = 0; push @problems, "merkle vector $name: expected_workflow_verdict needs receipt_ids (no silent pass)";
+        } else {
+            my $i = 0;
+            my %wf = (type => 'verifiable-workflow-receipt', version => '1',
+                      workflow_id => '11111111-1111-1111-1111-111111111111',
+                      receipt_id => '22222222-2222-2222-2222-222222222222',
+                      session_id => 'test-session', goal => 'test workflow', status => 'ok',
+                      steps => [ map { { seq => AER1::Int->new(++$i), tool => 'test-tool', receipt_id => $_,
+                                         receipt_hash => 'a' x 64, started_at => '2026-01-01T00:00:00Z',
+                                         ended_at => '2026-01-01T00:00:01Z', status => 'ok' } } @{ $v->{receipt_ids} } ],
+                      merkle_root => $v->{expected_root}, output_hash => 'b' x 64,
+                      verify_url => 'https://example.com/workflow/test');
+            @wf = AER1::verify_workflow(\%wf);
+            $verdict = @wf ? 'invalid' : 'valid';
+            my $wok = $verdict eq $v->{expected_workflow_verdict};
+            if ($wok && $verdict eq 'invalid') {
+                my $rb = $v->{rejected_by};
+                $wok = AER1::is_str($rb) && grep { index($_, $rb) >= 0 } @wf;
+            }
+            $ok &&= $wok;
+        }
+    }
+    record('merkle', $name, $ok, $verdict // 'root', @wf);
+    printf "[merkle]  %s: %s%s%s\n", $name, $ok ? 'PASS' : 'FAIL', defined $got && !$ok ? " (got $got)" : '',
+        defined $verdict ? " [workflow $verdict]" : '';
+    push @problems, "merkle vector $name failed" unless $ok;
+}
+
+# --- chains (Section 7) and the external commitment (Section 7.3) ---------
+sub chain_corpus {
+    my ($kind, $file, $fn) = @_;
+    for my $v (corpus($file)) {
+        my $name = $v->{name} // '?';
+        my $exp = $v->{expected_verdict};
+        unless (AER1::is_str($exp) && ($exp eq 'valid' || $exp eq 'invalid')) {
+            record($kind, $name, 0, 'unknown'); push @problems, "$kind vector $name: unknown expected_verdict (no silent pass)";
+            next;
+        }
+        my @f = $fn->($v);
+        my $ok = (!@f) == ($exp eq 'valid');
+        record($kind, $name, $ok, @f ? 'invalid' : 'valid', @f);
+        printf "[%s] %s: %s%s\n", $kind, $name, $ok ? 'PASS' : 'FAIL', !$ok && @f ? " (@{[join '; ', @f]})" : '';
+        push @problems, "$kind vector $name: expected $exp, got " . (@f ? 'invalid' : 'valid') unless $ok;
+    }
+}
+my $tl = sub { exists $_[0]{timeline} ? $_[0]{timeline} : $_[0]{entries} };
+chain_corpus('chain-v06-historical', 'chain-vectors.json', sub { AER1::verify_chain_v06_historical($tl->($_[0])) });
+chain_corpus('chain-v07', 'chain-vectors-v07.json', sub { AER1::verify_chain_v07($tl->($_[0])) });
+chain_corpus('commitment', 'commitment-vectors.json', sub { AER1::verify_chain_commitment($_[0]{timeline}, $_[0]{commitment}) });
+
+# --- supplementary vectors (expected verdicts derived from the reference) --
+if (defined $extra) {
+    my $c = load($extra);
+    my @v = AER1::is_obj($c) && AER1::is_arr($c->{vectors}) ? @{ $c->{vectors} } : ();
+    push @problems, "$extra contains no vectors (no silent pass)" unless @v;
+    my %run = (
+        receipt    => sub { AER1::check_receipt($_[0]{receipt}) },
+        chain      => sub { AER1::verify_chain_v07($_[0]{timeline}) },
+        commitment => sub { AER1::verify_chain_commitment($_[0]{timeline}, $_[0]{commitment}) },
+    );
+    for my $x (@v) {
+        my ($kind, $name, $exp) = @{$x}{qw(kind name expected_verdict)};
+        my $fn = $run{$kind // ''};
+        unless ($fn && AER1::is_str($exp) && ($exp eq 'valid' || $exp eq 'invalid')) {
+            record('extra', $name // '?', 0, 'unknown'); push @problems, "extra vector $name: unknown kind or verdict"; next;
+        }
+        my @f = $fn->($x);
+        my $ok = (!@f) == ($exp eq 'valid');
+        record('extra', $name, $ok, @f ? 'invalid' : 'valid', @f);
+        printf "[extra] %s: %s (expected %s%s)\n", $name, $ok ? 'PASS' : 'FAIL', $exp, @f ? "; $f[0]" : '';
+        push @problems, "extra vector $name: expected $exp, got " . (@f ? 'invalid' : 'valid') unless $ok;
+    }
+}
+
+# --- summary --------------------------------------------------------------
+print "\n";
+for my $k (qw(valid invalid invalid-profile anchored merkle chain-v06-historical chain-v07 commitment extra)) {
+    next unless $count{$k};
+    printf "%-22s %d/%d\n", $k, $count{$k}{pass} // 0, $count{$k}{total};
+}
+if ($json_out) {
+    require JSON::PP;
+    open my $fh, '>', $json_out or die "cannot write $json_out: $!\n";
+    print $fh JSON::PP->new->canonical->pretty->encode({ verifier => "AER1.pm $AER1::VERSION", results => \@results });
+    close $fh;
+}
+if (@problems) { print "\nCONFORMANCE FAILED:\n", map { " - $_\n" } @problems; exit 1 }
+print "\nCONFORMANCE OK: all vectors behave as expected.\n";
+exit 0;
