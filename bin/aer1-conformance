@@ -96,12 +96,26 @@ for my $p (@valid) {
 }
 for my $p (@invalid) {
     my $name = base($p); (my $stem = $name) =~ s/\.json$//;
-    my @f = AER1::check_receipt(load($p));
+    my $doc = load($p);
+    my @f = AER1::check_receipt($doc);
+    # Since kit v1.4.6 every invalid vector names its expected reason in `rejected_by`,
+    # verbatim. When present it is the test: the verifier must reject with exactly that
+    # message, which is stricter than a family match and needs no edit here for new vectors.
+    # The filename table below stays for corpora that predate the field. (2026-10-06: six
+    # new vectors failed closed here on the table alone while the verifier was right.)
+    my $verbatim = AER1::is_obj($doc) && defined $doc->{rejected_by} ? $doc->{rejected_by} : undef;
     my $want = $REASON{$stem};
     my %fam = map { family($_) => 1 } @f;
-    my $why = !@f ? 'accepted!' : !defined $want ? "no reason mapping for $name (fail closed)"
-            : !$fam{$want} ? "rejected, but not for '$want': $f[0]" : "rejected: $f[0]";
-    my $ok = record('invalid', $name, @f && defined $want && $fam{$want}, @f ? 'invalid' : 'valid', @f);
+    my %msg = map { $_ => 1 } @f;
+    my ($pass, $why) = (0, '');
+    if    (!@f)                { $why = 'accepted!' }
+    elsif (defined $verbatim)  { $pass = $msg{$verbatim} ? 1 : 0;
+                                 $why = $pass ? "rejected verbatim: $verbatim"
+                                              : "rejected, but not with rejected_by '$verbatim': $f[0]" }
+    elsif (!defined $want)     { $why = "no reason mapping for $name (fail closed)" }
+    elsif (!$fam{$want})       { $why = "rejected, but not for '$want': $f[0]" }
+    else                       { $pass = 1; $why = "rejected: $f[0]" }
+    my $ok = record('invalid', $name, $pass, @f ? 'invalid' : 'valid', @f);
     printf "[invalid] %s: %s (%s)\n", $name, $ok ? 'PASS' : 'FAIL', $why;
     push @problems, "$name: $why" unless $ok;
 }
